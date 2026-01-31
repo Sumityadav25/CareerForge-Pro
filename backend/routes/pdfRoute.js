@@ -1,12 +1,17 @@
 const express = require("express");
 const generatePDF = require("../services/pdfService");
+const auth = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-router.post("/generate", async (req, res) => {
+router.post("/generate", auth, async (req, res) => {
   try {
-    const { html } = req.body;
+    // 🔒 Plan check
+    if (req.user.plan !== "PRO") {
+      return res.status(403).json({ msg: "Upgrade to Pro to download PDF" });
+    }
 
+    const { html } = req.body;
     if (!html) return res.status(400).json({ error: "HTML content required" });
 
     const pdfBuffer = await generatePDF(html);
