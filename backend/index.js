@@ -1,11 +1,12 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-require("dotenv").config();
 const connectDB = require("./config/db");
 connectDB();
 const authRoute = require("./routes/authRoute");
 const resumeRoute = require("./routes/resumeRoute");
 const aiRoute = require("./routes/aiRoute");
+const matchRoute = require("./routes/matchRoute");
 
 const pdfRoute = require("./routes/pdfRoute");
 const paymentRoute = require("./routes/paymentRoute");
@@ -19,6 +20,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use("/api/auth", authRoute);
 app.use("/api/resume", resumeRoute);
 app.use("/api/ai", aiRoute);
+app.use("/api/match", matchRoute);
 
 // ROUTES BAAD ME USE HONGE
 app.use("/api/pdf", pdfRoute);
