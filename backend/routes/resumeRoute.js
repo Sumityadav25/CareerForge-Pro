@@ -1,26 +1,38 @@
 const express = require("express");
-const Resume = require("../models/Resume");
-const auth = require("../middleware/authMiddleware");
-
 const router = express.Router();
+const Resume = require("../models/Resume");
+const authMiddleware = require("../middleware/authMiddleware"); // 🔥 THIS LINE WAS MISSING
 
-// SAVE RESUME
-router.post("/save", auth, async (req, res) => {
-  const { title, html } = req.body;
 
-  const resume = await Resume.create({
-    userId: req.user.id,
-    title,
-    html
-  });
+// ================= SAVE RESUME =================
+router.post("/save", authMiddleware, async (req, res) => {
+  try {
+    const { title, html } = req.body;
 
-  res.json(resume);
+    const resume = new Resume({
+      userId: req.user.id,
+      title,
+      html,
+    });
+
+    await resume.save();
+    res.json({ msg: "Resume saved" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
+  }
 });
 
-// GET ALL USER RESUMES
-router.get("/all", auth, async (req, res) => {
-  const resumes = await Resume.find({ userId: req.user.id });
-  res.json(resumes);
+
+// ================= GET ALL RESUMES =================
+router.get("/all", authMiddleware, async (req, res) => {
+  try {
+    const resumes = await Resume.find({ userId: req.user.id });
+    res.json(resumes);
+  } catch (err) {
+    res.status(500).json({ msg: "Server error" });
+  }
 });
 
 module.exports = router;
