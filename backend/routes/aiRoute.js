@@ -1,90 +1,101 @@
 const express = require("express");
 const router = express.Router();
 const OpenAI = require("openai");
+const authMiddleware = require("../middleware/authMiddleware");
+const User = require("../models/User");
 
-// 🛑 SAFE ENV CHECK
+// ================= OPENAI SETUP =================
 if (!process.env.OPENAI_API_KEY) {
-  console.error("❌ OPENAI_API_KEY not found in environment variables");
+  console.error("❌ OPENAI_API_KEY missing");
 }
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// ================= PRO PLAN CHECK =================
+const proOnly = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (user.plan !== "PRO") {
+      return res.status(403).json({ msg: "PRO plan required" });
+    }
+    next();
+  } catch {
+    res.status(500).json({ msg: "Authorization failed" });
+  }
+};
 
-// ================= COVER LETTER =================
-router.post("/cover-letter", async (req, res) => {
+// ================= AI HELPER =================
+const askAI = async (prompt, temperature = 0.5) => {
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [{ role: "user", content: prompt }],
+    temperature,
+  });
+
+  return response.choices[0].message.content;
+};
+
+
+
+// ===================================================
+// 📝 COVER LETTER (FREE)
+// ===================================================
+router.post("/cover-letter", authMiddleware, async (req, res) => {
   try {
     const { name, jobRole, company, skills, experience } = req.body;
 
     const prompt = `
-You are an expert career coach.
+Write a professional, ATS-friendly cover letter.
 
-Write a professional, highly personalized cover letter.
-
-Candidate Name: ${name}
-Applying for Role: ${jobRole}
+Name: ${name}
+Role: ${jobRole}
 Company: ${company}
 Skills: ${skills}
 Experience: ${experience}
-
-Make it:
-- Human sounding
-- Confident
-- Not generic
-- ATS friendly
 `;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
-    });
-
-    res.json({ coverLetter: response.choices[0].message.content });
-
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ msg: "AI cover letter generation failed" });
+    const coverLetter = await askAI(prompt, 0.7);
+    res.json({ coverLetter });
+  } catch {
+    res.status(500).json({ msg: "Cover letter generation failed" });
   }
 });
 
 
-// ================= RESUME IMPROVE =================
-router.post("/resume-improve", async (req, res) => {
+
+// ===================================================
+// 📄 RESUME IMPROVE (FREE)
+// ===================================================
+router.post("/resume-improve", authMiddleware, async (req, res) => {
   try {
     const { resumeText } = req.body;
 
     const prompt = `
-You are an ATS resume expert.
-
-Analyze this resume and give:
-1. Weak points
-2. Missing skills
-3. Better phrasing suggestions
-4. ATS optimization tips
+Analyze resume and give:
+- Weak areas
+- Missing skills
+- Better phrasing
+- ATS tips
 
 Resume:
 ${resumeText}
 `;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.4,
-    });
-
-    res.json({ feedback: response.choices[0].message.content });
-
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ msg: "AI resume analysis failed" });
+    const feedback = await askAI(prompt, 0.4);
+    res.json({ feedback });
+  } catch {
+    res.status(500).json({ msg: "Resume analysis failed" });
   }
 });
 
 
-// ================= ATS SCORE =================
-router.post("/ats-score", async (req, res) => {
+
+// ===================================================
+// 🎯 ATS SCORE (PRO)
+// ===================================================
+router.post("/ats-score", authMiddleware, proOnly, async (req, res) => {
   try {
     const { resumeText, jobDescription } = req.body;
 
@@ -92,7 +103,6 @@ router.post("/ats-score", async (req, res) => {
 Compare resume with job description.
 
 Return:
-
 ATS Score (0–100)
 Missing Keywords
 Matching Skills
@@ -101,167 +111,139 @@ Suggestions
 Resume:
 ${resumeText}
 
-Job Description:
+Job:
 ${jobDescription}
 `;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-    });
-
-    res.json({ result: response.choices[0].message.content });
-
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ msg: "ATS score generation failed" });
+    const result = await askAI(prompt, 0.3);
+    res.json({ result });
+  } catch {
+    res.status(500).json({ msg: "ATS score failed" });
   }
 });
 
 
-// ================= SKILL GAP =================
-router.post("/skill-gap", async (req, res) => {
+
+// ===================================================
+// 🧠 SKILL GAP (PRO)
+// ===================================================
+router.post("/skill-gap", authMiddleware, proOnly, async (req, res) => {
   try {
     const { resumeText, jobDescription } = req.body;
 
     const prompt = `
-Find skill gap between resume and job description.
-
-Return:
-1. Missing Skills
-2. Recommended Topics to Learn
-3. Priority Order
+Find skill gap and learning path.
 
 Resume:
 ${resumeText}
 
-Job Description:
+Job:
 ${jobDescription}
 `;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.5,
-    });
-
-    res.json({ gapAnalysis: response.choices[0].message.content });
-
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ msg: "Skill gap analysis failed" });
+    const gapAnalysis = await askAI(prompt, 0.5);
+    res.json({ gapAnalysis });
+  } catch {
+    res.status(500).json({ msg: "Skill gap failed" });
   }
 });
 
-// ================= RESUME AUTO REWRITE =================
-router.post("/resume-rewrite", async (req, res) => {
+
+
+// ===================================================
+// ✍ RESUME REWRITE (PRO)
+// ===================================================
+router.post("/resume-rewrite", authMiddleware, proOnly, async (req, res) => {
   try {
     const { resumeText, jobRole } = req.body;
 
     const prompt = `
-You are a professional resume writer and ATS expert.
+Rewrite resume for ${jobRole}.
+Achievement-focused, ATS optimized.
 
-Rewrite this resume to make it:
-- More professional
-- Achievement-focused
-- ATS optimized
-- Strong action verbs
-- Better bullet points
-
-Target Role: ${jobRole}
-
-Original Resume:
+Resume:
 ${resumeText}
 `;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.6,
-    });
-
-    res.json({ rewrittenResume: response.choices[0].message.content });
-
-  } catch (err) {
-    console.error("Resume Rewrite AI Error:", err.message);
+    const rewrittenResume = await askAI(prompt, 0.6);
+    res.json({ rewrittenResume });
+  } catch {
     res.status(500).json({ msg: "Resume rewrite failed" });
   }
 });
 
-// ================= INTERVIEW QUESTION GENERATOR =================
-router.post("/interview-questions", async (req, res) => {
+
+
+// ===================================================
+// 🎤 INTERVIEW QUESTIONS (FREE)
+// ===================================================
+router.post("/interview-questions", authMiddleware, async (req, res) => {
   try {
     const { jobRole, experienceLevel } = req.body;
 
     const prompt = `
-You are a senior technical interviewer.
+Generate interview prep set.
 
-Generate a structured interview preparation set.
-
-Job Role: ${jobRole}
-Experience Level: ${experienceLevel}
-
-Provide:
-1. Technical Questions
-2. Scenario-based Questions
-3. HR Questions
-4. Rapid-fire Concepts
-
-Make them realistic and industry-level.
+Role: ${jobRole}
+Experience: ${experienceLevel}
 `;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
-    });
-
-    res.json({ questions: response.choices[0].message.content });
-
-  } catch (err) {
-    console.error("Interview AI Error:", err.message);
-    res.status(500).json({ msg: "Interview question generation failed" });
+    const questions = await askAI(prompt, 0.7);
+    res.json({ questions });
+  } catch {
+    res.status(500).json({ msg: "Interview questions failed" });
   }
 });
 
-// ================= CAREER ROADMAP GENERATOR =================
-router.post("/career-roadmap", async (req, res) => {
+
+
+// ===================================================
+// 🛣 CAREER ROADMAP (PRO)
+// ===================================================
+router.post("/career-roadmap", authMiddleware, proOnly, async (req, res) => {
   try {
     const { targetRole, duration, currentSkills } = req.body;
 
     const prompt = `
-You are an expert career mentor.
-
-Create a step-by-step learning roadmap.
+Create roadmap.
 
 Target Role: ${targetRole}
-Time Duration: ${duration}
-Current Skills: ${currentSkills}
-
-Provide:
-
-1. Month-wise roadmap
-2. Skills to learn
-3. Tools & technologies
-4. Project ideas
-5. Interview preparation focus
-
-Make it structured and practical.
+Duration: ${duration}
+Skills: ${currentSkills}
 `;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
-    });
-
-    res.json({ roadmap: response.choices[0].message.content });
-
-  } catch (err) {
-    console.error("Roadmap AI Error:", err.message);
-    res.status(500).json({ msg: "Roadmap generation failed" });
+    const roadmap = await askAI(prompt, 0.7);
+    res.json({ roadmap });
+  } catch {
+    res.status(500).json({ msg: "Roadmap failed" });
   }
 });
+
+
+
+// ===================================================
+// 🎯 RESUME TAILORING (ULTRA PRO FEATURE)
+// ===================================================
+router.post("/tailor-resume", authMiddleware, proOnly, async (req, res) => {
+  try {
+    const { resumeText, jobDescription } = req.body;
+
+    const prompt = `
+Tailor resume to job description with ATS optimization.
+
+Job:
+${jobDescription}
+
+Resume:
+${resumeText}
+`;
+
+    const tailoredResume = await askAI(prompt, 0.5);
+    res.json({ tailoredResume });
+  } catch {
+    res.status(500).json({ msg: "Resume tailoring failed" });
+  }
+});
+
 
 module.exports = router;

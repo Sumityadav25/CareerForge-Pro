@@ -45,6 +45,31 @@ router.get("/profile", authMiddleware, async (req, res) => {
     res.status(500).json({ msg: "Server error" });
   }
 });
+// ================= UPDATE PROFILE =================
+router.put("/profile", authMiddleware, async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    const updates = { name, email };
+
+    if (password && password.trim() !== "") {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updates.password = hashedPassword;
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      updates,
+      { new: true }
+    ).select("-password");
+
+    res.json(user);
+
+  } catch (err) {
+    res.status(500).json({ msg: "Profile update failed" });
+  }
+});
+
 
 
 module.exports = router;
