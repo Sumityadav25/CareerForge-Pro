@@ -37,14 +37,16 @@ router.post("/login", async (req, res) => {
   res.json({ token });
 });
 // ================= GET PROFILE =================
+// Get logged in user profile
 router.get("/profile", authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
     res.json(user);
-  } catch (err) {
-    res.status(500).json({ msg: "Server error" });
+  } catch {
+    res.status(500).json({ msg: "Failed to fetch profile" });
   }
 });
+
 // ================= UPDATE PROFILE =================
 router.put("/profile", authMiddleware, async (req, res) => {
   try {

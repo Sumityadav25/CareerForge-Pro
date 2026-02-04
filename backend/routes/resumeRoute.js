@@ -26,13 +26,15 @@ router.post("/save", authMiddleware, async (req, res) => {
 
 
 // ================= GET ALL RESUMES =================
-router.get("/all", authMiddleware, async (req, res) => {
+// Get all resumes of logged in user
+router.get("/my", authMiddleware, async (req, res) => {
   try {
     const resumes = await Resume.find({ userId: req.user.id });
     res.json(resumes);
-  } catch (err) {
-    res.status(500).json({ msg: "Server error" });
+  } catch {
+    res.status(500).json({ msg: "Failed to fetch resumes" });
   }
 });
+
 
 module.exports = router;

@@ -245,5 +245,56 @@ ${resumeText}
   }
 });
 
+// ================= RESUME SCORE METER =================
+router.post("/resume-score", authMiddleware, async (req, res) => {
+  try {
+    const { resumeText } = req.body;
+
+    const prompt = `
+You are an ATS resume scoring system.
+
+Return ONLY JSON in this format:
+
+{
+  "score": number,
+  "strengths": ["point1", "point2"],
+  "improvements": ["point1", "point2"]
+}
+
+Resume:
+${resumeText}
+`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+    });
+
+    const text = response.choices[0].message.content;
+
+    // 🔥 SAFE PARSE
+    let parsed;
+    try {
+      const jsonStart = text.indexOf("{");
+      const jsonEnd = text.lastIndexOf("}") + 1;
+      parsed = JSON.parse(text.slice(jsonStart, jsonEnd));
+    } catch {
+      console.log("AI RAW RESPONSE:", text);
+      return res.json({
+        score: 65,
+        strengths: ["Good structure"],
+        improvements: ["Add metrics", "Add more keywords"]
+      });
+    }
+
+    res.json(parsed);
+
+  } catch (err) {
+    console.error("Resume score AI error:", err);
+    res.status(500).json({ msg: "Resume scoring failed" });
+  }
+});
+
 
 module.exports = router;

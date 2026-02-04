@@ -2,28 +2,28 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
+
 connectDB();
-const authRoute = require("./routes/authRoute");
-const resumeRoute = require("./routes/resumeRoute");
-const aiRoute = require("./routes/aiRoute");
-const matchRoute = require("./routes/matchRoute");
 
-const pdfRoute = require("./routes/pdfRoute");
-const paymentRoute = require("./routes/paymentRoute");
-const webhookRoute = require("./routes/webhookRoute");
+const app = express();
 
-const app = express();   // ⭐ PEHLE APP BANATE HAIN
-
+// ================= MIDDLEWARE =================
 app.use(cors());
-app.use("/api", webhookRoute);
+
+// ⚠ Stripe webhook must come BEFORE express.json()
+app.use("/api/webhook", require("./routes/webhookRoute"));
+
+// JSON parser for other routes
 app.use(express.json({ limit: "10mb" }));
-app.use("/api/auth", authRoute);
-app.use("/api/resume", resumeRoute);
-app.use("/api/ai", aiRoute);
-app.use("/api/match", matchRoute);
 
-// ROUTES BAAD ME USE HONGE
-app.use("/api/pdf", pdfRoute);
-app.use("/api/payment", paymentRoute);
+// ================= ROUTES =================
+app.use("/api/auth", require("./routes/authRoute"));
+app.use("/api/resume", require("./routes/resumeRoute"));
+app.use("/api/ai", require("./routes/aiRoute"));
+app.use("/api/match", require("./routes/matchRoute"));
+app.use("/api/pdf", require("./routes/pdfRoute"));
+app.use("/api/payment", require("./routes/paymentRoute"));
 
-app.listen(5000, () => console.log("Server running on port 5000"));
+// ================= SERVER =================
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
