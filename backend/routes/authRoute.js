@@ -71,6 +71,10 @@ router.put("/profile", authMiddleware, async (req, res) => {
     res.status(500).json({ msg: "Profile update failed" });
   }
 });
+router.get("/me", authMiddleware, async (req, res) => {
+  const user = await User.findById(req.user.id).select("-password");
+  res.json(user);
+});
 
 
 

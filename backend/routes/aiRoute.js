@@ -4,27 +4,8 @@ const OpenAI = require("openai");
 const authMiddleware = require("../middleware/authMiddleware");
 const User = require("../models/User");
 
-// ================= OPENAI SETUP =================
-if (!process.env.OPENAI_API_KEY) {
-  console.error("❌ OPENAI_API_KEY missing");
-}
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// ================= PRO PLAN CHECK =================
-const proOnly = async (req, res, next) => {
-  try {
-    const user = await User.findById(req.user.id);
-    if (user.plan !== "PRO") {
-      return res.status(403).json({ msg: "PRO plan required" });
-    }
-    next();
-  } catch {
-    res.status(500).json({ msg: "Authorization failed" });
-  }
-};
+// ================= OPENAI =================
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ================= AI HELPER =================
 const askAI = async (prompt, temperature = 0.5) => {
@@ -33,8 +14,38 @@ const askAI = async (prompt, temperature = 0.5) => {
     messages: [{ role: "user", content: prompt }],
     temperature,
   });
-
   return response.choices[0].message.content;
+};
+
+// ================= TRIAL + PRO ACCESS =================
+const checkProAccess = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    const now = new Date();
+
+    if (user.plan === "PRO") return next();
+
+    // Start trial automatically
+    if (!user.trialStart) {
+      user.trialStart = now;
+      user.trialUsed = true;
+      await user.save();
+      return next();
+    }
+
+    const trialDays = (now - user.trialStart) / (1000 * 60 * 60 * 24);
+
+    if (trialDays <= 7) return next();
+
+    return res.status(403).json({ msg: "Trial expired. Upgrade to PRO." });
+  } catch {
+    res.status(500).json({ msg: "Access control failed" });
+  }
+};
+
+// ================= AI USAGE TRACK =================
+const trackUsage = async (req) => {
+  await User.findByIdAndUpdate(req.user.id, { $inc: { aiUsage: 1 } });
 };
 
 
@@ -46,23 +57,16 @@ router.post("/cover-letter", authMiddleware, async (req, res) => {
   try {
     const { name, jobRole, company, skills, experience } = req.body;
 
-    const prompt = `
-Write a professional, ATS-friendly cover letter.
-
-Name: ${name}
-Role: ${jobRole}
-Company: ${company}
-Skills: ${skills}
-Experience: ${experience}
-`;
+    const prompt = `Write a professional cover letter.\nName:${name}\nRole:${jobRole}\nCompany:${company}\nSkills:${skills}\nExperience:${experience}`;
 
     const coverLetter = await askAI(prompt, 0.7);
+    await trackUsage(req);
+
     res.json({ coverLetter });
   } catch {
     res.status(500).json({ msg: "Cover letter generation failed" });
   }
 });
-
 
 
 // ===================================================
@@ -71,19 +75,11 @@ Experience: ${experience}
 router.post("/resume-improve", authMiddleware, async (req, res) => {
   try {
     const { resumeText } = req.body;
-
-    const prompt = `
-Analyze resume and give:
-- Weak areas
-- Missing skills
-- Better phrasing
-- ATS tips
-
-Resume:
-${resumeText}
-`;
+    const prompt = `Analyze resume & give ATS improvement tips.\nResume:${resumeText}`;
 
     const feedback = await askAI(prompt, 0.4);
+    await trackUsage(req);
+
     res.json({ feedback });
   } catch {
     res.status(500).json({ msg: "Resume analysis failed" });
@@ -91,31 +87,18 @@ ${resumeText}
 });
 
 
-
 // ===================================================
-// 🎯 ATS SCORE (PRO)
+// 🎯 ATS SCORE (TRIAL + PRO)
 // ===================================================
-router.post("/ats-score", authMiddleware, proOnly, async (req, res) => {
+router.post("/ats-score", authMiddleware, checkProAccess, async (req, res) => {
   try {
     const { resumeText, jobDescription } = req.body;
 
-    const prompt = `
-Compare resume with job description.
-
-Return:
-ATS Score (0–100)
-Missing Keywords
-Matching Skills
-Suggestions
-
-Resume:
-${resumeText}
-
-Job:
-${jobDescription}
-`;
+    const prompt = `Compare resume vs job. Return ATS score + suggestions.\nResume:${resumeText}\nJob:${jobDescription}`;
 
     const result = await askAI(prompt, 0.3);
+    await trackUsage(req);
+
     res.json({ result });
   } catch {
     res.status(500).json({ msg: "ATS score failed" });
@@ -123,25 +106,16 @@ ${jobDescription}
 });
 
 
-
 // ===================================================
-// 🧠 SKILL GAP (PRO)
+// 🧠 SKILL GAP (TRIAL + PRO)
 // ===================================================
-router.post("/skill-gap", authMiddleware, proOnly, async (req, res) => {
+router.post("/skill-gap", authMiddleware, checkProAccess, async (req, res) => {
   try {
     const { resumeText, jobDescription } = req.body;
 
-    const prompt = `
-Find skill gap and learning path.
+    const gapAnalysis = await askAI(`Find skill gap.\nResume:${resumeText}\nJob:${jobDescription}`);
+    await trackUsage(req);
 
-Resume:
-${resumeText}
-
-Job:
-${jobDescription}
-`;
-
-    const gapAnalysis = await askAI(prompt, 0.5);
     res.json({ gapAnalysis });
   } catch {
     res.status(500).json({ msg: "Skill gap failed" });
@@ -149,29 +123,21 @@ ${jobDescription}
 });
 
 
-
 // ===================================================
-// ✍ RESUME REWRITE (PRO)
+// ✍ RESUME REWRITE (TRIAL + PRO)
 // ===================================================
-router.post("/resume-rewrite", authMiddleware, proOnly, async (req, res) => {
+router.post("/resume-rewrite", authMiddleware, checkProAccess, async (req, res) => {
   try {
     const { resumeText, jobRole } = req.body;
 
-    const prompt = `
-Rewrite resume for ${jobRole}.
-Achievement-focused, ATS optimized.
+    const rewrittenResume = await askAI(`Rewrite resume for ${jobRole}.\n${resumeText}`);
+    await trackUsage(req);
 
-Resume:
-${resumeText}
-`;
-
-    const rewrittenResume = await askAI(prompt, 0.6);
     res.json({ rewrittenResume });
   } catch {
     res.status(500).json({ msg: "Resume rewrite failed" });
   }
 });
-
 
 
 // ===================================================
@@ -181,14 +147,9 @@ router.post("/interview-questions", authMiddleware, async (req, res) => {
   try {
     const { jobRole, experienceLevel } = req.body;
 
-    const prompt = `
-Generate interview prep set.
+    const questions = await askAI(`Generate interview questions for ${jobRole}, ${experienceLevel}`);
+    await trackUsage(req);
 
-Role: ${jobRole}
-Experience: ${experienceLevel}
-`;
-
-    const questions = await askAI(prompt, 0.7);
     res.json({ questions });
   } catch {
     res.status(500).json({ msg: "Interview questions failed" });
@@ -196,23 +157,16 @@ Experience: ${experienceLevel}
 });
 
 
-
 // ===================================================
-// 🛣 CAREER ROADMAP (PRO)
+// 🛣 CAREER ROADMAP (TRIAL + PRO)
 // ===================================================
-router.post("/career-roadmap", authMiddleware, proOnly, async (req, res) => {
+router.post("/career-roadmap", authMiddleware, checkProAccess, async (req, res) => {
   try {
     const { targetRole, duration, currentSkills } = req.body;
 
-    const prompt = `
-Create roadmap.
+    const roadmap = await askAI(`Create roadmap to become ${targetRole} in ${duration}. Skills:${currentSkills}`);
+    await trackUsage(req);
 
-Target Role: ${targetRole}
-Duration: ${duration}
-Skills: ${currentSkills}
-`;
-
-    const roadmap = await askAI(prompt, 0.7);
     res.json({ roadmap });
   } catch {
     res.status(500).json({ msg: "Roadmap failed" });
@@ -220,81 +174,20 @@ Skills: ${currentSkills}
 });
 
 
-
 // ===================================================
-// 🎯 RESUME TAILORING (ULTRA PRO FEATURE)
+// 🎯 RESUME TAILOR (TRIAL + PRO)
 // ===================================================
-router.post("/tailor-resume", authMiddleware, proOnly, async (req, res) => {
+router.post("/tailor-resume", authMiddleware, checkProAccess, async (req, res) => {
   try {
     const { resumeText, jobDescription } = req.body;
 
-    const prompt = `
-Tailor resume to job description with ATS optimization.
+    const tailoredResume = await askAI(`Tailor resume to job.\n${jobDescription}\n${resumeText}`);
+    await trackUsage(req);
 
-Job:
-${jobDescription}
-
-Resume:
-${resumeText}
-`;
-
-    const tailoredResume = await askAI(prompt, 0.5);
     res.json({ tailoredResume });
   } catch {
     res.status(500).json({ msg: "Resume tailoring failed" });
   }
 });
-
-// ================= RESUME SCORE METER =================
-router.post("/resume-score", authMiddleware, async (req, res) => {
-  try {
-    const { resumeText } = req.body;
-
-    const prompt = `
-You are an ATS resume scoring system.
-
-Return ONLY JSON in this format:
-
-{
-  "score": number,
-  "strengths": ["point1", "point2"],
-  "improvements": ["point1", "point2"]
-}
-
-Resume:
-${resumeText}
-`;
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.2,
-    });
-
-    const text = response.choices[0].message.content;
-
-    // 🔥 SAFE PARSE
-    let parsed;
-    try {
-      const jsonStart = text.indexOf("{");
-      const jsonEnd = text.lastIndexOf("}") + 1;
-      parsed = JSON.parse(text.slice(jsonStart, jsonEnd));
-    } catch {
-      console.log("AI RAW RESPONSE:", text);
-      return res.json({
-        score: 65,
-        strengths: ["Good structure"],
-        improvements: ["Add metrics", "Add more keywords"]
-      });
-    }
-
-    res.json(parsed);
-
-  } catch (err) {
-    console.error("Resume score AI error:", err);
-    res.status(500).json({ msg: "Resume scoring failed" });
-  }
-});
-
 
 module.exports = router;
