@@ -1,0 +1,37 @@
+/* 🌤 Global Career SaaS Background */
+.app-bg {
+  min-height: 100vh;
+  background: linear-gradient(120deg, #f8fafc, #eef2f7, #f1f5f9);
+  background-size: 200% 200%;
+  animation: bgMove 18s ease infinite;
+}
+
+/* Subtle moving gradient */
+@keyframes bgMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Soft floating career shapes */
+.app-bg::before {
+  content: "";
+  position: fixed;
+  width: 500px;
+  height: 500px;
+  top: -100px;
+  left: -100px;
+  background: radial-gradient(circle, rgba(99,102,241,0.12), transparent 60%);
+  z-index: 0;
+}
+
+.app-bg::after {
+  content: "";
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  bottom: -150px;
+  right: -150px;
+  background: radial-gradient(circle, rgba(16,185,129,0.12), transparent 60%);
+  z-index: 0;
+}

@@ -1,0 +1,88 @@
+.profile-wrapper {
+  padding: 120px 20px 40px;
+  display: flex;
+  justify-content: center;
+}
+
+.profile-card {
+  width: 100%;
+  max-width: 600px;
+  padding: 30px;
+  border-radius: 20px;
+
+  backdrop-filter: blur(20px);
+  background: rgba(15, 25, 35, 0.75);   /* DARK GLASS */
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+
+  color: #ffffff;
+}
+
+
+.profile-section {
+  margin-top: 25px;
+}
+
+.profile-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 8px 0;
+}
+
+.input-group {
+  margin: 12px 0;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: none;
+  margin-top: 5px;
+}
+
+.primary-btn, .upgrade-btn-profile {
+  margin-top: 12px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(45deg, #00f5ff, #8f00ff);
+  color: white;
+  cursor: pointer;
+}
+
+.secondary-btn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.3);
+  background: transparent;
+  color: white;
+}
+
+.btn-group {
+  display: flex;
+  justify-content: space-between;
+}
+
+.pro-plan {
+  color: #00ffcc;
+}
+
+.free-plan {
+  color: #aaa;
+}
+.profile-section h3 {
+  color: #00f5ff;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+.profile-row span {
+  color: #b0c4d4;
+}
+.profile-wrapper {
+  padding: 120px 20px 40px;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+}

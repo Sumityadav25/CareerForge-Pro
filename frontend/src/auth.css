@@ -1,0 +1,134 @@
+/* 🌌 Animated Background */
+.auth-bg {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed, #0f172a);
+  overflow: hidden;
+  position: relative;
+}
+
+/* ✨ Floating blobs */
+.floating-shape {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.25;
+  animation: float 12s infinite ease-in-out;
+}
+
+.s1 { width: 300px; height: 300px; background: #7c3aed; top: 10%; left: 15%; }
+.s2 { width: 200px; height: 200px; background: #22d3ee; bottom: 15%; right: 10%; }
+.s3 { width: 250px; height: 250px; background: #f472b6; top: 60%; left: 60%; }
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-40px); }
+  100% { transform: translateY(0px); }
+}
+
+/* 💎 Glass Card */
+.auth-card {
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(16px);
+  padding: 40px;
+  border-radius: 20px;
+  width: 350px;
+  box-shadow: 0 15px 50px rgba(0,0,0,0.4);
+  color: white;
+  animation: fadeIn 0.7s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-card h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* 🧠 Inputs */
+.auth-card input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255,255,255,0.15);
+  color: white;
+}
+
+/* 🚀 Button */
+.auth-card button {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.auth-card button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(124,58,237,0.6);
+}
+
+.auth-card a {
+  color: #a5b4fc;
+  text-decoration: none;
+}
+
+.upgrade-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.upgrade-modal {
+  width: 320px;
+  padding: 25px;
+  border-radius: 18px;
+  backdrop-filter: blur(18px);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  text-align: center;
+  color: white;
+}
+
+.upgrade-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.upgrade-btn-modal {
+  background: linear-gradient(45deg, #00f5ff, #8f00ff);
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+}
+
+.close-btn-modal {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.4);
+  padding: 8px 14px;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+}
