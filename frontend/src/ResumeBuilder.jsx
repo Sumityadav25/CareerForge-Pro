@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+import API from "./api";
+import Toast from "./Toast";
+import { motion } from "framer-motion";
 import "./builder.css";
 
 function ResumeBuilder() {
@@ -18,113 +21,94 @@ Education:
 B.Tech CSE`);
 
   const [targetRole, setTargetRole] = useState("");
-  const token = localStorage.getItem("token");
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
 
   const rewriteResume = async () => {
     if (!targetRole) {
-      alert("Enter target job role");
+      setToast({ message: "Enter target job role", type: "error" });
       return;
     }
 
+    setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/ai/resume-rewrite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resumeText: resumeInput,
-          jobRole: targetRole,
-        }),
+      const res = await API.post("/ai/resume-rewrite", {
+        resumeText: resumeInput,
+        jobRole: targetRole,
       });
 
-      const data = await res.json();
+      setResumeInput(res.data.rewrittenResume);
+      setToast({ message: "Resume optimized!", type: "success" });
+    } catch {
+      setToast({ message: "AI rewrite failed", type: "error" });
+    }
+    setLoading(false);
+  };
 
-      // 🔥 Safety check
-      if (!data.rewrittenResume) {
-        console.log("AI response error:", data);
-        alert("AI rewrite failed. Check console.");
-        return;
-      }
-
-      setResumeInput(data.rewrittenResume);
-
-    } catch (err) {
-      console.error(err);
-      alert("AI request failed");
+  const saveResume = async () => {
+    try {
+      await API.post("/resume/save", {
+        title: "My Resume",
+        html: resumeInput,
+      });
+      setToast({ message: "Resume saved!", type: "success" });
+    } catch {
+      setToast({ message: "Save failed", type: "error" });
     }
   };
 
-
-  const saveResume = async () => {
-    const htmlContent = document.getElementById("resume-preview").innerHTML;
-
-    await fetch("http://localhost:5000/api/resume/save", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ title: "My Resume", html: htmlContent }),
-    });
-
-    alert("Resume saved!");
-  };
-
   const downloadPDF = async () => {
-    const htmlContent = document.getElementById("resume-preview").innerHTML;
-
-    const res = await fetch("http://localhost:5000/api/pdf/generate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ html: htmlContent }),
-    });
-
-    if (res.status === 403) return alert("Upgrade to Pro");
-
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "resume.pdf";
-    a.click();
+    try {
+      const res = await API.post("/pdf/generate", { html: resumeInput }, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "resume.pdf";
+      a.click();
+    } catch {
+      setToast({ message: "PDF download failed", type: "error" });
+    }
   };
 
   return (
-    <div className="builder-container">
-      <div className="builder-left premium-card">
-        <h2>✍ Resume Editor</h2>
+    <div className="builder-bg">
+      <div className="builder-layout">
 
-        <input
-          type="text"
-          placeholder="Target Job Role"
-          value={targetRole}
-          onChange={(e) => setTargetRole(e.target.value)}
-          className="builder-input"
-        />
-        <textarea
-          value={resumeInput || ""}
-          onChange={(e) => setResumeInput(e.target.value)}
-          className="builder-textarea"
-        />
+        {/* LEFT EDITOR */}
+        <motion.div className="builder-left" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <h2>✍ Resume Editor</h2>
 
-        <div className="builder-buttons">
-          <button onClick={rewriteResume} className="ai-button">✨ AI Rewrite</button>
-          <button onClick={saveResume} className="ai-button">💾 Save</button>
-        </div>
+          <input
+            type="text"
+            placeholder="Target Job Role"
+            value={targetRole}
+            onChange={(e) => setTargetRole(e.target.value)}
+            className="builder-input"
+          />
 
-        <div className="builder-buttons">
-          <button onClick={downloadPDF} className="ai-button">📄 Download PDF</button>
-        </div>
+          <textarea
+            value={resumeInput}
+            onChange={(e) => setResumeInput(e.target.value)}
+            className="builder-textarea"
+          />
+
+          <div className="builder-buttons">
+            <button onClick={rewriteResume} className="ai-button">✨ AI Rewrite</button>
+            <button onClick={saveResume} className="ai-button">💾 Save</button>
+            <button onClick={downloadPDF} className="ai-button">📄 PDF</button>
+          </div>
+
+          {loading && <div className="ai-loader">🤖 Optimizing...</div>}
+        </motion.div>
+
+        {/* RIGHT PREVIEW */}
+        <motion.div className="builder-right" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <h2>📄 Live Preview</h2>
+          <div className="preview-box">{resumeInput}</div>
+        </motion.div>
       </div>
 
-      <div className="builder-right premium-card">
-        <h2>📄 Live Preview</h2>
-        <div id="resume-preview" className="preview-box">
-          {resumeInput}
-        </div>
-      </div>
+      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
     </div>
   );
 }
