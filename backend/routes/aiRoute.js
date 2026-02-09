@@ -1,37 +1,34 @@
 const express = require("express");
 const router = express.Router();
-const axios = require("axios");
 const authMiddleware = require("../middleware/authMiddleware");
 const User = require("../models/User");
 
 // ================= AI HELPER (HUGGINGFACE) =================
+
+
+const axios = require("axios");
+
 const askAI = async (prompt) => {
   try {
     const response = await axios.post(
-      "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.2",
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
-        inputs: `<s>[INST] ${prompt} [/INST]`,
-        parameters: {
-          max_new_tokens: 400,
-          temperature: 0.7,
-          return_full_text: false
-        }
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.HF_API_KEY}`,
-          "Content-Type": "application/json",
-        },
+        contents: [
+          {
+            parts: [{ text: prompt }]
+          }
+        ]
       }
     );
 
-    return response.data[0]?.generated_text || "AI did not return response.";
+    return response.data.candidates[0].content.parts[0].text;
 
   } catch (err) {
-    console.error("🔥 HF ERROR:", err.response?.data || err.message);
+    console.error("🔥 GEMINI FINAL ERROR:", err.response?.data || err.message);
     throw err;
   }
 };
+
 
 
 

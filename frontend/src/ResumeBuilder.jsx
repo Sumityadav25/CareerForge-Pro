@@ -5,45 +5,49 @@ import { motion } from "framer-motion";
 import "./builder.css";
 
 function ResumeBuilder() {
-  const [resumeInput, setResumeInput] = useState(`Name: Sumit Yadav
-Email: sumit@email.com
-Phone: 9876543210
+  const [resumeInput, setResumeInput] = useState(`Name: Enter Your Name
+Email: example@email.com
+Phone: 123*****90
 
 Skills:
-- React.js
-- Node.js
-- MongoDB
+Add Your Skills Here
 
 Experience:
-Developed scalable web applications using MERN stack.
+Write Your Experience Here
 
 Education:
-B.Tech CSE`);
+Add Education Details
+
+Hobby:
+-Cricket
+-Chess`);
+
 
   const [targetRole, setTargetRole] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
   const rewriteResume = async () => {
-    if (!targetRole) {
-      setToast({ message: "Enter target job role", type: "error" });
-      return;
-    }
+  if (!targetRole) {
+    setToast({ message: "Enter target job role", type: "error" });
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const res = await API.post("/ai/resume-rewrite", {
-        resumeText: resumeInput,
-        jobRole: targetRole,
-      });
+  setLoading(true);
+  try {
+    const res = await API.post("/ai/resume-rewrite", {
+      resumeText: resumeInput,
+      jobRole: targetRole,
+    });
 
-      setResumeInput(res.data.rewrittenResume);
-      setToast({ message: "Resume optimized!", type: "success" });
-    } catch {
-      setToast({ message: "AI rewrite failed", type: "error" });
-    }
-    setLoading(false);
-  };
+    setResumeInput(res.data.result); // FIXED
+    setToast({ message: "Resume optimized!", type: "success" });
+  } catch (err) {
+    console.log(err.response?.data);
+    setToast({ message: "AI rewrite failed", type: "error" });
+  }
+  setLoading(false);
+};
 
   const saveResume = async () => {
     try {
@@ -58,17 +62,24 @@ B.Tech CSE`);
   };
 
   const downloadPDF = async () => {
-    try {
-      const res = await API.post("/pdf/generate", { html: resumeInput }, { responseType: "blob" });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "resume.pdf";
-      a.click();
-    } catch {
-      setToast({ message: "PDF download failed", type: "error" });
-    }
-  };
+  try {
+    const res = await API.post(
+      "/pdf/generate",
+      { content: resumeInput }, // FIXED
+      { responseType: "blob" }
+    );
+
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "resume.pdf";
+    a.click();
+  } catch (err) {
+    console.log(err.response?.data);
+    setToast({ message: "PDF download failed", type: "error" });
+  }
+};
+
 
   return (
     <div className="builder-bg">

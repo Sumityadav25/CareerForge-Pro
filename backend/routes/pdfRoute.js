@@ -6,15 +6,14 @@ const router = express.Router();
 
 router.post("/generate", auth, async (req, res) => {
   try {
-    // 🔒 Plan check
-    if (req.user.plan !== "PRO") {
-      return res.status(403).json({ msg: "Upgrade to Pro to download PDF" });
+    // Accept both keys (safe)
+    const htmlContent = req.body.content || req.body.html;
+
+    if (!htmlContent) {
+      return res.status(400).json({ error: "Resume content required" });
     }
 
-    const { html } = req.body;
-    if (!html) return res.status(400).json({ error: "HTML content required" });
-
-    const pdfBuffer = await generatePDF(html);
+    const pdfBuffer = await generatePDF(htmlContent);
 
     res.set({
       "Content-Type": "application/pdf",
@@ -22,8 +21,9 @@ router.post("/generate", auth, async (req, res) => {
     });
 
     res.send(pdfBuffer);
+
   } catch (error) {
-    console.error(error);
+    console.error("PDF ERROR:", error);
     res.status(500).json({ error: "PDF generation failed" });
   }
 });
